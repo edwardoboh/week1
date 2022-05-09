@@ -1,3 +1,32 @@
 #!/bin/bash
 
 # [assignment] create your own bash script to compile Multipler3.circom using PLONK below
+
+cd contracts/circuits
+
+mkdir _plonkMultiplier3
+
+if [ -f ./powersOfTau28_hez_final_10.ptau ]; then
+    echo "powersOfTau28_hez_final_10.ptau already exists. Skipping Download"
+else
+    echo "Downloading powersOfTau28_hez_final_10.ptau"
+    wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_10.ptau
+
+fi
+
+# Now compiling the circuit
+
+circom Multiplier3.circom --r1cs --sym --wasm -o _plonkMultiplier3
+snarkjs r1cs info _plonkMultiplier3/Multiplier3.r1cs
+
+# Start a new zkey and make a contribution
+
+snarkjs plonk setup _plonkMultiplier3/Multiplier3.r1cs powersOfTau28_hez_final_10.ptau _plonkMultiplier3/circuit_0000.zkey
+snarkjs zkey verify _plonkMultiplier3/circuit_0000.zkey _plonkMultiplier3/circuit_final.zkey --name="First contibutor" -v -e="Some random string"
+snarkjs zkey export verificationkey _plonkMultiplier3/circuit_final.zkey _plonkMultiplier3/verification_key.json
+
+# Generate the verification smart contract
+
+snarkjs zkey export solidityverifier _plonkMultiplier3/circuit_final.zkey ../_plonkMultiplier3Verifier.sol
+
+cd ../..
